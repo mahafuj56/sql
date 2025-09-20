@@ -1,0 +1,91 @@
+-- GoldenBasket Database SQL Script
+
+-- 1. Create Database
+CREATE DATABASE GoldenBasket;
+GO
+
+USE GoldenBasket;
+GO
+
+-- 2. Create Customers Table
+CREATE TABLE Customers
+(
+    Customer_ID CHAR(6) PRIMARY KEY 
+        CHECK (Customer_ID LIKE 'CU____'),
+    Name VARCHAR(20) NOT NULL,
+    Phone_Number VARCHAR(15) 
+        CHECK (Phone_Number LIKE '01[0-9]-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+    Gender CHAR(1) 
+        CHECK (Gender IN ('M','F'))
+);
+
+-- 3. Create Products Table
+CREATE TABLE Products
+(
+    Product_ID CHAR(10) PRIMARY KEY 
+        CHECK (Product_ID LIKE 'PR____'),
+    Product_Name VARCHAR(20) NOT NULL,
+    Price FLOAT CHECK(Price >= 0),
+    Quantity_available INT CHECK(Quantity_available >= 0)
+);
+
+-- 4. Create Purchases Table
+CREATE TABLE Purchases
+(
+    Purchase_ID INT PRIMARY KEY IDENTITY(1,1),
+    Customer_ID CHAR(6) NOT NULL,
+    Product_ID CHAR(10) NOT NULL,
+    Enrollment_date DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Customer FOREIGN KEY (Customer_ID) REFERENCES Customers(Customer_ID),
+    CONSTRAINT FK_Product FOREIGN KEY (Product_ID) REFERENCES Products(Product_ID)
+);
+
+-- 5. Insert Dummy Data into Customers
+INSERT INTO Customers (Customer_ID, Name, Phone_Number, Gender)
+VALUES
+('CU0001', 'Rahim Uddin', '017-12345678', 'M'),
+('CU0002', 'Nusrat Jahan', '018-87654321', 'F'),
+('CU0003', 'Karim Ahmed', '019-11112222', 'M');
+
+-- 6. Insert Dummy Data into Products
+INSERT INTO Products (Product_ID, Product_Name, Price, Quantity_available)
+VALUES
+('PR0001', 'Laptop', 75000, 10),
+('PR0002', 'Mobile', 25000, 50),
+('PR0003', 'Chair', 3000, 100);
+
+-- 7. Insert Dummy Data into Purchases
+INSERT INTO Purchases (Customer_ID, Product_ID)
+VALUES
+('CU0001', 'PR0001'),
+('CU0002', 'PR0002'),
+('CU0003', 'PR0003');
+
+-- 8. Update Phone Number Example
+UPDATE Customers
+SET Phone_Number = '016-99998888'
+WHERE Customer_ID = 'CU0001';
+
+-- 9. Trigger to Update Quantity Available
+CREATE TRIGGER trg_UpdateQuantity
+ON Purchases
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE P
+    SET P.Quantity_available = P.Quantity_available - I.Quantity
+    FROM Products P
+    INNER JOIN 
+    (
+        SELECT Product_ID, COUNT(*) AS Quantity
+        FROM inserted
+        GROUP BY Product_ID
+    ) I ON P.Product_ID = I.Product_ID;
+END;
+
+-- 10. Test Trigger
+-- INSERT INTO Purchases (Customer_ID, Product_ID)
+-- VALUES ('CU0001', 'PR0001');
+-- SELECT * FROM Products;
